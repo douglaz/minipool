@@ -375,15 +375,17 @@ async fn get_block_by_height(
 
 fn get_fee_rate_blocking(rpc: &Client, blocks: u16) -> Result<f64, bitcoincore_rpc::Error> {
     let estimate = rpc.estimate_smart_fee(blocks, None)?;
+    // Bitcoin Core returns BTC/kB, esplora expects sat/vB
+    // Conversion: sat/kB / 1000 = sat/vB
     Ok(estimate
         .fee_rate
-        .map(|fee_rate: bitcoincore_rpc::bitcoin::Amount| fee_rate.to_btc())
+        .map(|fee_rate: bitcoincore_rpc::bitcoin::Amount| fee_rate.to_sat() as f64 / 1000.0)
         .unwrap_or_else(|| {
             warn!(
                 "No fee rate estimate available for {} blocks, using default",
                 blocks
             );
-            0.0001
+            1.0 // 1 sat/vB as default
         }))
 }
 
